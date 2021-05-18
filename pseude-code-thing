@@ -18,8 +18,8 @@
     auto NAp, KABp, Bp, subbufp = to_tuple(dec(KAS,buf));
 
     assert(NAp == NA);
-    assert(NABp = NAB);
-    assert(Bp = B);
+    assert(NABp == NAB);
+    assert(Bp == B);
     assert(subbufp = subbuf);
 
     // B

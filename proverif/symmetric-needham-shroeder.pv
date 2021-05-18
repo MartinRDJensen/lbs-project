@@ -1,0 +1,85 @@
+(*
+
+Message 1: A -> S : ( A, B, Na )
+Message 2: S -> A : { Na, kAB, B, {kAB, A}kBS }kAS
+Message 3: A -> B : { kAB, A }kBS
+Message 4: B -> A : { nB }kAB
+Message 5: S -> B : { nB-1 }kAB
+
+*)
+
+free c: channel.
+
+type host.
+type nonce.
+type key.
+
+fun encrypt(bitstring, key): bitstring.
+reduc forall m: bitstring, k: key; decrypt(encrypt(m, k), k) = m.
+
+fun nonce_to_bitstring(nonce): bitstring.
+reduc forall n: nonce; bitstring_to_nonce(nonce_to_bitstring(n)) = n.
+
+free secretA, secretB: bitstring [private].
+query attacker(secretA).
+query attacker(secretB).
+
+event initiatorAccepts(host, host).
+event responderAccepts(host, host).
+
+fun dec(nonce): nonce.
+
+not attacker(new kAS).
+not attacker(new kBS).
+
+free A, B: host.
+
+(* query event(initiatorAccepts(A, B)). *)
+(* query event(responderAccepts(A, B)). *)
+
+let processA(kAS: key) =
+    new Na: nonce;
+    out(c, (A, B, Na));
+    in(c, m1: bitstring);
+    let (=Na, kAB: key, =B, m2: bitstring) = decrypt(m1, kAS) in
+    out(c, m2);
+    in(c, m3: bitstring);
+    let Nb = bitstring_to_nonce(decrypt(m3, kAB)) in
+    out(c, encrypt(nonce_to_bitstring(dec(Nb)), kAB));
+    out(c, encrypt(secretA, kAB));
+    event initiatorAccepts(A, B).
+
+let processB(kBS: key) =
+    in(c, m2: bitstring);
+    let (kAB: key, a: host) = decrypt(m2, kBS) in
+    new Nb: nonce;
+    out(c, encrypt(nonce_to_bitstring(Nb), kAB));
+    in(c, m4: bitstring);
+    if bitstring_to_nonce(decrypt(m4, kAB)) = dec(Nb) then
+    if a = A then out(c, encrypt(secretB, kAB));
+                  event responderAccepts(a, B).
+
+table keys(host, key).
+
+let processS =
+    in(c, (a: host, b: host, Na: nonce));
+    get keys(=a, kaS) in
+    get keys(=b, kbS) in
+    new kAB: key;
+    out(c, encrypt((Na, kAB, b, encrypt((kAB, a), kbS)), kaS)).
+
+let processK =
+    in(c, (h: host, k: key));
+    if h <> A && h <> B then insert keys(h, k).
+
+process
+    new kAS: key;
+    new kBS: key;
+    insert keys(A, kAS);
+    insert keys(B, kBS);
+    (
+        (!processA(kAS))|
+        (!processB(kBS))|
+        (!processS)|
+        (!processK)
+    )
