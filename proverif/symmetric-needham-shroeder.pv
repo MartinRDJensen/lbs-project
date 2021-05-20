@@ -4,7 +4,7 @@ Message 1: A -> S : ( A, B, Na )
 Message 2: S -> A : { Na, kAB, B, {kAB, A}kBS }kAS
 Message 3: A -> B : { kAB, A }kBS
 Message 4: B -> A : { nB }kAB
-Message 5: S -> B : { nB-1 }kAB
+Message 5: S -> B : { dec(nB) }kAB
 
 *)
 
