@@ -1,7 +1,7 @@
 (*
 
-Message 1: A -> S : ( A, B, Na )
-Message 2: S -> A : { Na, kAB, B, {kAB, A}kBS }kAS
+Message 1: A -> S : ( A, B, nA )
+Message 2: S -> A : { nA, kAB, B, {kAB, A}kBS }kAS
 Message 3: A -> B : { kAB, A }kBS
 Message 4: B -> A : { nB }kAB
 Message 5: S -> B : { dec(nB) }kAB
@@ -38,35 +38,35 @@ free A, B: host.
 (* query event(responderAccepts(A, B)). *)
 
 let processA(kAS: key) =
-    new Na: nonce;
-    out(c, (A, B, Na));
+    new nA: nonce;
+    out(c, (A, B, nA));
     in(c, m1: bitstring);
-    let (=Na, kAB: key, =B, m2: bitstring) = decrypt(m1, kAS) in
+    let (=nA, kAB: key, =B, m2: bitstring) = decrypt(m1, kAS) in
     out(c, m2);
     in(c, m3: bitstring);
-    let Nb = bitstring_to_nonce(decrypt(m3, kAB)) in
-    out(c, encrypt(nonce_to_bitstring(dec(Nb)), kAB));
+    let nB = bitstring_to_nonce(decrypt(m3, kAB)) in
+    out(c, encrypt(nonce_to_bitstring(dec(nB)), kAB));
     out(c, encrypt(secretA, kAB));
     event initiatorAccepts(A, B).
 
 let processB(kBS: key) =
     in(c, m2: bitstring);
     let (kAB: key, a: host) = decrypt(m2, kBS) in
-    new Nb: nonce;
-    out(c, encrypt(nonce_to_bitstring(Nb), kAB));
+    new nB: nonce;
+    out(c, encrypt(nonce_to_bitstring(nB), kAB));
     in(c, m4: bitstring);
-    if bitstring_to_nonce(decrypt(m4, kAB)) = dec(Nb) then
+    if bitstring_to_nonce(decrypt(m4, kAB)) = dec(nB) then
     if a = A then out(c, encrypt(secretB, kAB));
                   event responderAccepts(a, B).
 
 table keys(host, key).
 
 let processS =
-    in(c, (a: host, b: host, Na: nonce));
+    in(c, (a: host, b: host, nA: nonce));
     get keys(=a, kaS) in
     get keys(=b, kbS) in
     new kAB: key;
-    out(c, encrypt((Na, kAB, b, encrypt((kAB, a), kbS)), kaS)).
+    out(c, encrypt((nA, kAB, b, encrypt((kAB, a), kbS)), kaS)).
 
 let processK =
     in(c, (h: host, k: key));

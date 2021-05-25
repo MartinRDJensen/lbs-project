@@ -34,26 +34,25 @@ let needham_schroeder (kAS kBS: key) (a b:host) =
     // A
     let nA = new_nonce () in
     // A -> S: (a, b, nA)
-    let kAB = new_key () in
-    let m2 = encrypt kBS (kAB, a) in
-    let m1 = encrypt kAS (nA, kAB, b, m2) in
+    let kAB_S = new_key () in
+    let m2_S = encrypt kBS (kAB_S, a) in
+    let m1 = encrypt kAS (nA, kAB_S, b, m2_S) in
     // S -> A: { nA, kAB, b, { kAB, a }kBS }kAS
-    let nA', kAB', b', m2' = decrypt kAS m1 in
+    let nA', kAB_A, b_A, m2 = decrypt kAS m1 in
     let _ = assert (nA' = nA) in
-    let _ = assert (kAB' = kAB) in
-    let _ = assert (b' = b) in
-    let _ = assert (m2' = m2) in
+    let _ = assert (kAB_A = kAB_S) in
+    let _ = assert (b_A = b) in
+    let _ = assert (m2 = m2_S) in
     // A -> B: { kAB, a }kBS
-    let kAB'', a'' = decrypt kBS m2' in
-    let _ = assert (kAB'' = kAB) in
-    let _ = assert (a'' = a) in
-    let nB = new_nonce () in
-    let m3 = encrypt kAB'' nB in
+    let kAB_B, a_B = decrypt kBS m2 in
+    let _ = assert (kAB_B = kAB_S) in
+    let _ = assert (a_B = a) in
+    let nB_A = new_nonce () in
+    let m3 = encrypt kAB_B nB_A in
     // B -> A: { nB }kAB
-    let nB' = decrypt kAB' m3 in
-    let _ = assert (nB' = nB) in
-    let m4 = encrypt kAB'' (dec nB') in
+    let nB_A = decrypt kAB_A m3 in
+    let _ = assert (nB_A = nB_A) in
+    let m4 = encrypt kAB_B (dec nB_A) in
     // A -> B: { dec(nB) }kAB
-    let nB'' = decrypt kAB' m4 in
-    let _ = assert (nB'' = dec nB) in
-    kAB
+    let _ = assert (decrypt kAB_A m4 = dec nB_A) in
+    kAB_S

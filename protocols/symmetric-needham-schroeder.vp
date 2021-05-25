@@ -1,0 +1,61 @@
+attacker[passive]
+
+principal A[
+    knows private kAS
+    generates nA
+]
+
+A -> S: nA
+
+principal S[
+    knows private kAS
+    knows private kBS
+
+    generates kAB_S
+
+    m1 = ENC(kAS, CONCAT(nA, kAB_S, ENC(kBS, kAB_S)))
+]
+
+S -> A: m1
+
+principal A[
+    nAp, kAB_A, m2 = SPLIT(DEC(kAS, m1))
+]
+
+A -> B : m2
+
+principal B[
+    knows private kBS
+
+    kAB_B = DEC(kBS, m2)
+
+    generates nB_B
+
+    m3 = ENC(kAB_B, nB_B)
+]
+
+B -> A : m3
+
+principal A[
+    nB_A = DEC(kAB_A, m3)
+
+    // TODO: How can we model a subtraction?
+    c1 = CONCAT(nB_A, nB_A)
+    m4 = ENC(kAB_A, c1)
+]
+
+A -> B : m4
+
+principal B[
+    c2 = CONCAT(nB_B, nB_B)
+]
+
+queries[
+    confidentiality? kAS
+    confidentiality? kBS
+    confidentiality? kAB_S
+    equivalence? nA, nAp
+    equivalence? nB_A, nB_B
+    equivalence? c1, c2
+    equivalence? kAB_S, kAB_A, kAB_B
+]
