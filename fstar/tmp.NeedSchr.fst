@@ -1,4 +1,4 @@
-module Spec.NeedSchr
+module tmp.NeedSchr
 
 module U32 = FStar.UInt32
 
@@ -7,9 +7,6 @@ open FStar.Pervasives
 assume new type key: eqtype
 assume new type host: eqtype
 assume new type nonce: eqtype
-
-type prin = string
-type pubkey : prin => S
 
 type ciphertext 'a = (key & 'a)
 
@@ -32,6 +29,44 @@ assume val new_nonce: unit -> EXT nonce
 
 assume val dec: nonce -> nonce
 
+// should be bitstirng not sure how to do so
+assume val nonce_to_bitstring: nonce -> string
+assume val bitstring_to_nonce: string -> nonce
+
+//let nonce_to_bitstring_bitstring_to_nonce (n: nonce): Lemma SHOULD BE FIXED
+  //  ((bitstring_to_nonce (nonce_to_bitstring n)) == n)  = () 
+
+let get_A_nonce () =
+    new_nonce()
+
+//Does the setup S should do and returns the value to be send to A
+let processS (kAS kBS: key) (a b: host) (nA: nonce) =
+    let kAB_S = new_key() in
+    let sub_s_to_A = encrypt kBS (kAB_S, a) in
+    let s_to_A = encrypt kAS (nA, kAB_S, b, sub_s_to_A) in
+    //send s_to_A to party A 
+    s_to_A
+
+//let a_receive_from_s (kAS:key) (msg: ciphertext (nonce & key & host & (ciphertext (key & host))))= 
+ //   let nA', kAB_A, b_A, m2 = decrypt kAS msg in
+  //  nA'
+let b_receive_a_identity_from_a (kBS:key) (msg:ciphertext (key & host)) =
+    let k = key_of msg in
+    //let t = assert (k = kBS) in
+    //let kAB, a = decrypt kBS msg in
+    //kAB
+    let a = 42 in
+    a
+
+let aidentity_to_b (kBS kAB : key) (a: host) =
+    let c = encrypt kBS (kAB, a) in
+    c
+    
+
+let processA (kAS: key) (a b: host) = 
+    let nA = get_A_nonce () in
+    nA
+    
 
 // TODO: Turn individual steps into functions that correspond directly to functions in ProVerif.
 let needham_schroeder (kAS kBS: key) (a b:host) =
