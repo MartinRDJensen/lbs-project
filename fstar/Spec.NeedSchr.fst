@@ -8,55 +8,94 @@ assume new type key: eqtype
 assume new type host: eqtype
 assume new type nonce: eqtype
 
-type prin = string
-type pubkey : prin => S
-
 type ciphertext 'a = (key & 'a)
 
-let key_of (k,_:ciphertext 'a) = k
-let plaintext_of (_,m:ciphertext 'a) = m
+let key_of (k, _: ciphertext 'a) = k
+let plaintext_of (_, m: ciphertext 'a) = m
 
-let encrypt (k:key) (m:'a) = (k, m)
+let encrypt (k: key) (m: 'a) = (k, m)
 
-let decrypt (k:key) (c:ciphertext 'a): Pure 'a
-    (requires k = key_of c)
-    (ensures fun r -> r == plaintext_of c)
-=
-    plaintext_of c
+let decrypt (k: key) (c: ciphertext 'a): option 'a =
+    if k = key_of c then Some (plaintext_of c) else None
 
-let encrypt_decrypt (k:key) (m:'a): Lemma
-    (decrypt k (encrypt k m) == m) = ()
+let encrypt_decrypt (k: key) (m: 'a): Lemma
+    (decrypt k (encrypt k m) == Some m) = ()
 
 assume val new_key: unit -> EXT key
 assume val new_nonce: unit -> EXT nonce
 
 assume val dec: nonce -> nonce
 
+type m1t = (host & host & nonce)
+type m3t = ciphertext (key & host)
+type m2t = ciphertext (nonce & key & host & m3t)
+type m4t = ciphertext nonce
+type m5t = ciphertext nonce
 
-// TODO: Turn individual steps into functions that correspond directly to functions in ProVerif.
+type state_A1t = (key & host & nonce)
+type state_A2t = (key & host & nonce & key)
+
+type state_B1t = (key & nonce)
+
+
+let initiate_A (kAS: key) (a b: host) (nA: nonce): state_A1t & m1t =
+    ((kAS, b, nA), (a, b, nA))
+
+
+let generate_key_S (kAS kBS: key) (a, b, nA: m1t) (kAB: key): m2t & host =
+    encrypt kAS (nA, kAB, b, encrypt kBS (kAB, a)), a
+
+
+let handshake_A (kAS, b, nA: state_A1t) (m2: m2t): option (state_A2t & m3t) =
+    match decrypt kAS m2 with
+    | None -> None
+    | Some (nA', kAB, b', m3) ->
+    if nA' = nA && b' = b
+    then Some ((kAS, b, nA, kAB), m3)
+    else None
+
+
+let handshake_B (kBS: key) (m3: m3t) (nB: nonce): option (state_B1t & m4t & host) =
+    match decrypt kBS m3 with
+    | None -> None
+    | Some (kAB, a) ->
+    Some ((kAB, nB), encrypt kAB nB, a)
+
+
+let accept_A (_, _, _, kAB: state_A2t) (m4: m4t): option (key & m5t) =
+    match decrypt kAB m4 with
+    | None -> None
+    | Some nB ->
+    Some (kAB, encrypt kAB (dec nB))
+
+
+let accept_B (kAB, nB: state_B1t) (m5: m5t): option key =
+    match decrypt kAB m5 with
+    | None -> None
+    | Some nB' ->
+    if dec nB = nB'
+    then Some kAB
+    else None
+
+
 let needham_schroeder (kAS kBS: key) (a b:host) =
     // A
-    let nA = new_nonce () in
+    let state_A1, m1 = initiate_A kAS a b (new_nonce ()) in
     // A -> S: (a, b, nA)
-    let kAB_S = new_key () in
-    let m2_S = encrypt kBS (kAB_S, a) in
-    let m1 = encrypt kAS (nA, kAB_S, b, m2_S) in
+    let m2, a_S = generate_key_S kAS kBS m1 (new_key ()) in
+    let _ = assert (a_S = a) in
     // S -> A: { nA, kAB, b, { kAB, a }kBS }kAS
-    let nA', kAB_A, b_A, m2 = decrypt kAS m1 in
-    let _ = assert (nA' = nA) in
-    let _ = assert (kAB_A = kAB_S) in
-    let _ = assert (b_A = b) in
-    let _ = assert (m2 = m2_S) in
+    match handshake_A state_A1 m2 with
+    | Some (state_A2, m3) ->
     // A -> B: { kAB, a }kBS
-    let kAB_B, a_B = decrypt kBS m2 in
-    let _ = assert (kAB_B = kAB_S) in
+    match handshake_B kBS m3 (new_nonce ()) with
+    | Some (state_B1, m4, a_B) ->
     let _ = assert (a_B = a) in
-    let nB_A = new_nonce () in
-    let m3 = encrypt kAB_B nB_A in
     // B -> A: { nB }kAB
-    let nB_A = decrypt kAB_A m3 in
-    let _ = assert (nB_A = nB_A) in
-    let m4 = encrypt kAB_B (dec nB_A) in
+    match accept_A state_A2 m4 with
+    | Some (kAB_A, m5) ->
     // A -> B: { dec(nB) }kAB
-    let _ = assert (decrypt kAB_A m4 = dec nB_A) in
-    kAB_S
+    match accept_B state_B1 m5 with
+    | Some kAB_B ->
+    let _ = assert (kAB_A = kAB_B) in
+    ()

@@ -4,7 +4,7 @@ Message 1: A -> S : ( A, B, nA )
 Message 2: S -> A : { nA, kAB, B, {kAB, A}kBS }kAS
 Message 3: A -> B : { kAB, A }kBS
 Message 4: B -> A : { nB }kAB
-Message 5: S -> B : { dec(nB) }kAB
+Message 5: A -> B : { dec(nB) }kAB
 
 *)
 
@@ -34,8 +34,11 @@ not attacker(new kBS).
 
 free A, B: host.
 
+(* Uncomment these to verify that the end state can be reached. *)
 (* query event(initiatorAccepts(A, B)). *)
 (* query event(responderAccepts(A, B)). *)
+
+(* TODO: Refactor steps into functions. *)
 
 let processA(kAS: key) =
     new nA: nonce;
