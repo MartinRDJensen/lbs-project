@@ -14,8 +14,8 @@ type host.
 type nonce.
 type key.
 
-fun encrypt(bitstring, key): bitstring.
-reduc forall m: bitstring, k: key; decrypt(encrypt(m, k), k) = m.
+fun encrypt(key, bitstring): bitstring.
+reduc forall k: key, m: bitstring; decrypt(k, encrypt(k, m)) = m.
 
 fun nonce_to_bitstring(nonce): bitstring.
 reduc forall n: nonce; bitstring_to_nonce(nonce_to_bitstring(n)) = n.
@@ -38,38 +38,73 @@ free A, B: host.
 (* query event(initiatorAccepts(A, B)). *)
 (* query event(responderAccepts(A, B)). *)
 
-(* TODO: Refactor steps into functions. *)
+letfun initiate_A(kAS: key, a: host, b: host, nA: nonce) =
+    ((kAS, b, nA), (a, b, nA)).
+
+letfun generate_key_S(kAS: key, kBS: key, m1: bitstring, kAB: key) =
+    let (a: host, b: host, nA: nonce) = m1 in
+    (encrypt(kAS, (nA, kAB, b, encrypt(kBS, (kAB, a)))), a).
+
+letfun handshake_A (state: bitstring, m2: bitstring) =
+    let (kAS: key, b: host, nA: nonce) = state in
+    let (=nA, kAB: key, =b, m3: bitstring) = decrypt(kAS, m2) in
+    (kAB, m3).
+
+
+
+
+letfun handshake_B (kBS: key, m3: bitstring, nB: nonce) =
+    let (kAB: key, a: host) = decrypt(kBS, m3) in
+    ((kAB, nB), encrypt(kAB, nonce_to_bitstring(nB)), a).
+
+
+
+letfun accept_A (kAB: key, m4: bitstring) =
+    let nB = bitstring_to_nonce(decrypt(kAB, m4)) in
+    (kAB, encrypt(kAB, nonce_to_bitstring(dec(nB)))).
+
+
+
+letfun accept_B (state: bitstring, m5: bitstring) =
+    let (kAB: key, nB: nonce) = state in
+    let nBp = bitstring_to_nonce(decrypt(kAB, m5)) in
+    if dec(nB) = nBp
+    then kAB.
+
 
 let processA(kAS: key) =
     new nA: nonce;
-    out(c, (A, B, nA));
-    in(c, m1: bitstring);
-    let (=nA, kAB: key, =B, m2: bitstring) = decrypt(m1, kAS) in
-    out(c, m2);
-    in(c, m3: bitstring);
-    let nB = bitstring_to_nonce(decrypt(m3, kAB)) in
-    out(c, encrypt(nonce_to_bitstring(dec(nB)), kAB));
-    out(c, encrypt(secretA, kAB));
+    let (state1: bitstring, m1: bitstring) = initiate_A(kAS, A, B, nA) in
+    out(c, m1);
+    in(c, m2: bitstring);
+    let (state2: key, m3: bitstring) = handshake_A(state1, m2) in
+    out(c, m3);
+    in(c, m4: bitstring);
+    let (kAB: key, m5: bitstring) = accept_A(state2, m4) in
+    out(c, m5);
+    out(c, encrypt(kAB, secretA));
     event initiatorAccepts(A, B).
 
 let processB(kBS: key) =
-    in(c, m2: bitstring);
-    let (kAB: key, a: host) = decrypt(m2, kBS) in
+    in(c, m3: bitstring);
     new nB: nonce;
-    out(c, encrypt(nonce_to_bitstring(nB), kAB));
-    in(c, m4: bitstring);
-    if bitstring_to_nonce(decrypt(m4, kAB)) = dec(nB) then
-    if a = A then out(c, encrypt(secretB, kAB));
-                  event responderAccepts(a, B).
+    let (state1: bitstring, m4: bitstring, a: host) = handshake_B(kBS, m3, nB) in
+    out(c, m4);
+    in(c, m5: bitstring);
+    let kAB = accept_B(state1, m5) in
+    event responderAccepts(a, B);
+    if a = A then out(c, encrypt(kAB, secretB)).
 
 table keys(host, key).
 
 let processS =
-    in(c, (a: host, b: host, nA: nonce));
-    get keys(=a, kaS) in
-    get keys(=b, kbS) in
+    in(c, m1: bitstring);
+    let (a: host, b: host, nA: nonce) = m1 in
+    get keys(=a, kAS) in
+    get keys(=b, kBS) in
     new kAB: key;
-    out(c, encrypt((nA, kAB, b, encrypt((kAB, a), kbS)), kaS)).
+    let (m2: bitstring, =a) = generate_key_S (kAS, kBS, m1, kAB) in
+    out(c, m2).
 
 let processK =
     in(c, (h: host, k: key));

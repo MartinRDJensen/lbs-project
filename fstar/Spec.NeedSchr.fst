@@ -32,44 +32,40 @@ type m2t = ciphertext (nonce & key & host & m3t)
 type m4t = ciphertext nonce
 type m5t = ciphertext nonce
 
-type state_A1t = (key & host & nonce)
-type state_A2t = (key & host & nonce & key)
+type state1_At = (key & host & nonce)
+type state2_At = key
 
-type state_B1t = (key & nonce)
+type state1_Bt = (key & nonce)
 
 
-let initiate_A (kAS: key) (a b: host) (nA: nonce): state_A1t & m1t =
+let initiate_A (kAS: key) (a b: host) (nA: nonce): state1_At & m1t =
     ((kAS, b, nA), (a, b, nA))
-
 
 let generate_key_S (kAS kBS: key) (a, b, nA: m1t) (kAB: key): m2t & host =
     encrypt kAS (nA, kAB, b, encrypt kBS (kAB, a)), a
 
 
-let handshake_A (kAS, b, nA: state_A1t) (m2: m2t): option (state_A2t & m3t) =
+let handshake_A (kAS, b, nA: state1_At) (m2: m2t): option (state2_At & m3t) =
     match decrypt kAS m2 with
     | None -> None
     | Some (nA', kAB, b', m3) ->
     if nA' = nA && b' = b
-    then Some ((kAS, b, nA, kAB), m3)
+    then Some (kAB, m3)
     else None
 
-
-let handshake_B (kBS: key) (m3: m3t) (nB: nonce): option (state_B1t & m4t & host) =
+let handshake_B (kBS: key) (m3: m3t) (nB: nonce): option (state1_Bt & m4t & host) =
     match decrypt kBS m3 with
     | None -> None
     | Some (kAB, a) ->
     Some ((kAB, nB), encrypt kAB nB, a)
 
-
-let accept_A (_, _, _, kAB: state_A2t) (m4: m4t): option (key & m5t) =
+let accept_A (kAB: state2_At) (m4: m4t): option (key & m5t) =
     match decrypt kAB m4 with
     | None -> None
     | Some nB ->
     Some (kAB, encrypt kAB (dec nB))
 
-
-let accept_B (kAB, nB: state_B1t) (m5: m5t): option key =
+let accept_B (kAB, nB: state1_Bt) (m5: m5t): option key =
     match decrypt kAB m5 with
     | None -> None
     | Some nB' ->
@@ -77,25 +73,24 @@ let accept_B (kAB, nB: state_B1t) (m5: m5t): option key =
     then Some kAB
     else None
 
-
-let needham_schroeder (kAS kBS: key) (a b:host) =
+let needham_schroeder (kAS kBS: key) (a b: host) =
     // A
-    let state_A1, m1 = initiate_A kAS a b (new_nonce ()) in
+    let state1_A, m1 = initiate_A kAS a b (new_nonce ()) in
     // A -> S: (a, b, nA)
     let m2, a_S = generate_key_S kAS kBS m1 (new_key ()) in
     let _ = assert (a_S = a) in
     // S -> A: { nA, kAB, b, { kAB, a }kBS }kAS
-    match handshake_A state_A1 m2 with
-    | Some (state_A2, m3) ->
+    match handshake_A state1_A m2 with
+    | Some (state2_A, m3) ->
     // A -> B: { kAB, a }kBS
     match handshake_B kBS m3 (new_nonce ()) with
-    | Some (state_B1, m4, a_B) ->
+    | Some (state1_B, m4, a_B) ->
     let _ = assert (a_B = a) in
     // B -> A: { nB }kAB
-    match accept_A state_A2 m4 with
+    match accept_A state2_A m4 with
     | Some (kAB_A, m5) ->
     // A -> B: { dec(nB) }kAB
-    match accept_B state_B1 m5 with
+    match accept_B state1_B m5 with
     | Some kAB_B ->
     let _ = assert (kAB_A = kAB_B) in
     ()
