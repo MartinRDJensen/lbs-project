@@ -113,27 +113,6 @@ noextract let snd (l1, l2, l3: (S.seq 'a & S.seq 'a & S.seq 'a))
 noextract let join3 (l1, l2, l3: (S.seq 'a & S.seq 'a & S.seq 'a))
     = S.(l1 @| l2 @| l3)
 
-noextract inline_for_extraction let lena = 1ul
-noextract inline_for_extraction let lenb = U32.(lena +^ lena +^ lena)
-
-let foo (b: B.buffer U8.t{B.length b = U32.v lenb}) (a: B.buffer U8.t{B.length a = U32.v lena}): Stack unit
-    (requires fun h ->
-        B.live h a /\
-        B.live h b /\
-        B.disjoint a b /\
-        True)
-    (ensures  fun h0 _ h1 ->
-        M.modifies (M.loc_buffer b) h0 h1 /\
-        // S.slice (B.as_seq h1 b) 0 1 `S.equal` (B.as_seq h1 a) /\
-        B.as_seq h1 b `S.equal` S.((B.as_seq h1 a) @| (B.as_seq h1 a) @| (B.as_seq h1 a)) /\
-        True)
-=
-    memcpy a (B.sub b 0ul lena) lena;
-    memcpy a (B.sub b lena lena) lena;
-    memcpy a (B.sub b U32.(lena+^lena) lena) lena;
-    ()
-
-
 // TODO: How to prove this fully?
 let initiate_A (kAS: key) (a b: host) (nA: nonce) (state: state1_At) (m1: m1t): Stack unit
     (requires fun h ->
@@ -148,7 +127,7 @@ let initiate_A (kAS: key) (a b: host) (nA: nonce) (state: state1_At) (m1: m1t): 
         let state', m1' = Spec.initiate_A (B.as_seq h0 kAS) (B.as_seq h0 a) (B.as_seq h0 b) (B.as_seq h0 nA) in
         modifies (loc_union (loc_buffer state) (loc_buffer m1)) h0 h1 /\
         B.as_seq h1 state `S.equal` join3 state' /\
-        // B.as_seq h1 m1 `S.equal` join3 m1' /\
+        B.as_seq h1 m1 `S.equal` join3 m1' /\
         True)
 =
     let open U32 in
@@ -167,7 +146,7 @@ let initiate_A (kAS: key) (a b: host) (nA: nonce) (state: state1_At) (m1: m1t): 
     let _ = assert M.(modifies (loc_buffer m1) h1 h2) in
     let state', m1' = Spec.initiate_A (B.as_seq h0 kAS) (B.as_seq h0 a) (B.as_seq h0 b) (B.as_seq h0 nA) in
     let _ = assert (B.as_seq h2 state `S.equal` join3 state') in
-    // let _ = assert (B.as_seq h2 m1 `S.equal` join3 m1') in
+    let _ = assert (B.as_seq h2 m1 `S.equal` join3 m1') in
     ()
 
 noextract inline_for_extraction let nul = (U8.uint_to_t 0)

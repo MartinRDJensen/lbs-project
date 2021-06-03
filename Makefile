@@ -45,7 +45,7 @@ $(OCAML_SRCS): $(SPEC_SRCS) dist
 	$(FSTAR) $(SPEC_SRCS) --codegen OCaml --odir dist/spec
 
 dist/impl/out.krml: $(IMPL_SRCS) $(SPEC_SRCS) dist
-	$(FSTAR) $(IMPL_SRCS) --codegen Kremlin --odir dist/impl $(FSTAR_INCLUDES)
+	$(FSTAR) $(IMPL_SRCS) --codegen Kremlin --odir dist/impl $(FSTAR_INCLUDES) --z3rlimit 10
 
 $(GENC_SRCS): dist/impl/out.krml
 	$(KRML) -tmpdir dist/impl -skip-compilation -skip-makefiles dist/impl/out.krml -add-include "<header.h>"
