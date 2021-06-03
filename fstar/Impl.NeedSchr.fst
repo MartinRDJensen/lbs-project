@@ -104,12 +104,6 @@ effect Mem (a: Type) (b: B.buffer U8.t) = Stack a
     (requires fun h -> B.live h b)
     (ensures  fun h0 _ h1 -> ST.modifies_none h0 h1)
 
-noextract let fst (l1, l2, l3: (S.seq 'a & S.seq 'a & S.seq 'a))
-    = l1
-
-noextract let snd (l1, l2, l3: (S.seq 'a & S.seq 'a & S.seq 'a))
-    = l2
-
 noextract let join3 (l1, l2, l3: (S.seq 'a & S.seq 'a & S.seq 'a))
     = S.(l1 @| l2 @| l3)
 
