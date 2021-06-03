@@ -131,21 +131,13 @@ let initiate_A (kAS: key) (a b: host) (nA: nonce) (state: state1_At) (m1: m1t): 
         True)
 =
     let open U32 in
-    let h0 = ST.get() in
     // state
     memcpy kAS (B.sub state 0ul key_length) key_length;
     memcpy b   (B.sub state key_length host_length) host_length;
     memcpy nA  (B.sub state (key_length +^ host_length) nonce_length) nonce_length;
-    let h1 = ST.get() in
     // m1
     memcpy a  (B.sub m1 0ul host_length) host_length;
     memcpy b  (B.sub m1 host_length host_length) host_length;
     memcpy nA (B.sub m1 (host_length +^ host_length) nonce_length) nonce_length;
-    let h2 = ST.get() in
-    let _ = assert M.(modifies (loc_buffer state) h0 h1) in
-    let _ = assert M.(modifies (loc_buffer m1) h1 h2) in
-    let state', m1' = Spec.initiate_A (B.as_seq h0 kAS) (B.as_seq h0 a) (B.as_seq h0 b) (B.as_seq h0 nA) in
-    let _ = assert (B.as_seq h2 state `S.equal` join3 state') in
-    let _ = assert (B.as_seq h2 m1 `S.equal` join3 m1') in
     ()
 #pop-options

@@ -1,4 +1,4 @@
-.PHONY: clean all
+.PHONY: clean cleanhints all
 
 FSTAR_HOME ?= $(HOME)/everest/FStar
 KREMLIN_HOME ?= $(HOME)/everest/kremlin
@@ -39,6 +39,10 @@ all: $(OCAML_SRCS) dist/impl/main
 
 clean:
 	rm -rf dist
+
+cleanhints: clean
+	rm -f fstar/Spec.NeedSchr.fst.hints
+	rm -f fstar/Impl.NeedSchr.fst.hints
 
 dist:
 	mkdir dist
