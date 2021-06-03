@@ -113,7 +113,7 @@ noextract let snd (l1, l2, l3: (S.seq 'a & S.seq 'a & S.seq 'a))
 noextract let join3 (l1, l2, l3: (S.seq 'a & S.seq 'a & S.seq 'a))
     = S.(l1 @| l2 @| l3)
 
-// TODO: How to prove this fully?
+#push-options "--z3rlimit 10"
 let initiate_A (kAS: key) (a b: host) (nA: nonce) (state: state1_At) (m1: m1t): Stack unit
     (requires fun h ->
         let open B in
@@ -148,11 +148,4 @@ let initiate_A (kAS: key) (a b: host) (nA: nonce) (state: state1_At) (m1: m1t): 
     let _ = assert (B.as_seq h2 state `S.equal` join3 state') in
     let _ = assert (B.as_seq h2 m1 `S.equal` join3 m1') in
     ()
-
-noextract inline_for_extraction let nul = (U8.uint_to_t 0)
-
-noextract let test (kAS: Spec.key) (a b: Spec.host) (nA: Spec.nonce): St unit =
-    push_frame();
-    let m1 = B.alloca nul message1_length in
-    let state = B.alloca nul state1_A_length in
-    pop_frame()
+#pop-options

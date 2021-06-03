@@ -22,6 +22,8 @@ LIBRARIES=$(KREMLIN_HOME)/kremlib/dist/generic/libkremlib.a
 LIBRARIES+= $(HACL_STAR)/dist/gcc-compatible/libevercrypt.a
 LIBRARIES+= -I.
 
+FSTAR_HINTS ?= --use_hints --use_hint_hashes --record_hints
+
 FSTAR_INCLUDES=--include $(KREMLIN_HOME)/kremlib
 FSTAR_INCLUDES+= --include fstar
 # FSTAR_INCLUDES+= --include $(HACL_STAR)/specs/lemmas
@@ -42,10 +44,10 @@ dist:
 	mkdir dist
 
 $(OCAML_SRCS): $(SPEC_SRCS) dist
-	$(FSTAR) $(SPEC_SRCS) --codegen OCaml --odir dist/spec
+	$(FSTAR) $(FSTAR_HINTS) $(SPEC_SRCS) --codegen OCaml --odir dist/spec
 
 dist/impl/out.krml: $(IMPL_SRCS) $(SPEC_SRCS) dist
-	$(FSTAR) $(IMPL_SRCS) --codegen Kremlin --odir dist/impl $(FSTAR_INCLUDES) --z3rlimit 10
+	$(FSTAR) $(FSTAR_HINTS) $(IMPL_SRCS) --codegen Kremlin --odir dist/impl $(FSTAR_INCLUDES)
 
 $(GENC_SRCS): dist/impl/out.krml
 	$(KRML) -tmpdir dist/impl -skip-compilation -skip-makefiles dist/impl/out.krml -add-include "<header.h>"
