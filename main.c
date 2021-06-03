@@ -1,7 +1,7 @@
 ﻿#include <stdio.h>
 
-#include "dist/impl/Test.h"
+#include "dist/impl/Impl_NeedSchr.h"
 
 int main(){
-    printf("%u\n",Test_mul(6,7));
+    // printf("%u\n",Impl_NeedSchr_mul(6,7));
 }

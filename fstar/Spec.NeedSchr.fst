@@ -1,12 +1,15 @@
 module Spec.NeedSchr
 
+module U8 = FStar.UInt8
 module U32 = FStar.UInt32
+
+module S = FStar.Seq
 
 open FStar.Pervasives
 
-assume new type key: eqtype
-assume new type host: eqtype
-assume new type nonce: eqtype
+type key = S.seq U8.t
+type host = S.seq U8.t
+type nonce = S.seq U8.t
 
 type ciphertext 'a = (key & 'a)
 

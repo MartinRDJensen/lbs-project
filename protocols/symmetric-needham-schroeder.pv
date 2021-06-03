@@ -72,6 +72,7 @@ letfun accept_B (state: bitstring, m5: bitstring) =
     then kAB.
 
 
+
 let processA(kAS: key) =
     new nA: nonce;
     let (state1: bitstring, m1: bitstring) = initiate_A(kAS, A, B, nA) in
