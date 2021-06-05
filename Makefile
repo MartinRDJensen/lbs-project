@@ -8,7 +8,7 @@ FSTAR ?= $(FSTAR_HOME)/bin/fstar.exe
 KRML ?= $(KREMLIN_HOME)/krml
 
 SPEC_SRCS=fstar/Spec.NeedSchr.fst
-IMPL_SRCS=fstar/Impl.NeedSchr.fst
+IMPL_SRCS=fstar/Impl.NeedSchr.fst fstar/Memcpy.fst $(SPEC_SRCS)
 
 OCAML_SRCS=dist/spec/Spec_NeedSchr.ml
 GENC_SRCS=dist/impl/Impl_NeedSchr.c
@@ -41,8 +41,7 @@ clean:
 	rm -rf dist
 
 cleanhints: clean
-	rm -f fstar/Spec.NeedSchr.fst.hints
-	rm -f fstar/Impl.NeedSchr.fst.hints
+	rm -f fstar/*.fst.hints
 
 dist:
 	mkdir dist
@@ -50,11 +49,11 @@ dist:
 $(OCAML_SRCS): $(SPEC_SRCS) dist
 	$(FSTAR) $(FSTAR_HINTS) $(SPEC_SRCS) --codegen OCaml --odir dist/spec
 
-dist/impl/out.krml: $(IMPL_SRCS) $(SPEC_SRCS) dist
+dist/impl/out.krml: $(IMPL_SRCS) dist
 	$(FSTAR) $(FSTAR_HINTS) $(IMPL_SRCS) --codegen Kremlin --odir dist/impl $(FSTAR_INCLUDES)
 
 $(GENC_SRCS): dist/impl/out.krml
-	$(KRML) -tmpdir dist/impl -skip-compilation -skip-makefiles dist/impl/out.krml -add-include "<header.h>"
+	$(KRML) -tmpdir dist/impl -skip-compilation -skip-makefiles dist/impl/out.krml -add-include "<header.h>" -bundle Memcpy,Spec.NeedSchr
 
 dist/impl/main: $(C_SRCS) header.h
 	gcc $(INCLUDE_DIRS) $(C_SRCS) -o dist/impl/main $(LIBRARIES) -O3
