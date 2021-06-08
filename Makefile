@@ -12,7 +12,7 @@ IMPL_SRCS=fstar/Impl.NeedSchr.fst fstar/Memcpy.fst $(SPEC_SRCS)
 
 OCAML_SRCS=dist/spec/Spec_NeedSchr.ml
 GENC_SRCS=dist/impl/Impl_NeedSchr.c
-C_SRCS=$(GENC_SRCS) main.c
+C_SRCS=$(GENC_SRCS) main.c impl.c
 
 INCLUDE_DIRS=-I"$(KREMLIN_HOME)/include"
 INCLUDE_DIRS+= -I"$(KREMLIN_HOME)/kremlib/dist/minimal"
