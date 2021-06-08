@@ -31,7 +31,7 @@ assume val dec: nonce -> nonce
 
 type m1t = (host & host & nonce)
 type m3t = ciphertext (key & host)
-type m2t = ciphertext (nonce & key & host & m3t)
+type m2t =  ciphertext (nonce & key & host & m3t)
 type m4t = ciphertext nonce
 type m5t = ciphertext nonce
 

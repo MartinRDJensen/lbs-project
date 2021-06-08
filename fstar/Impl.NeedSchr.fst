@@ -59,6 +59,20 @@ effect Mem (a: Type) (b: B.buffer U8.t) = Stack a
 noextract let join3 (l1, l2, l3: (S.seq 'a & S.seq 'a & S.seq 'a))
     = S.(l1 @| l2 @| l3)
 
+noextract let join4 (l1, l2, l3, l4: (S.seq 'a & S.seq 'a & S.seq 'a & S.seq 'a))
+    = S.(l1 @| l2 @| l3 @| l4)
+
+(*
+type m3t = ciphertext (key & host)
+type m2t =  ciphertext (nonce & key & host & m3t)
+*)
+noextract let joinCipher (v:Spec.m2t) =
+    let _, t = v in
+    let n, k, h, m3 = t in
+    let _, tt = m3 in
+    let inner_key, inner_host = tt in 
+    S.(n @| k @| h @|  inner_key @| inner_host)
+
 #push-options "--z3rlimit 10"
 let initiate_A (kAS: key) (a b: host) (nA: nonce) (state: state1_At) (m1: m1t): Stack unit
     (requires fun h ->
@@ -87,3 +101,66 @@ let initiate_A (kAS: key) (a b: host) (nA: nonce) (state: state1_At) (m1: m1t): 
     memcpy nA (B.sub m1 (host_length +^ host_length) nonce_length) nonce_length;
     ()
 #pop-options
+
+noextract let toSeq (l1: (S.seq 'a))
+    = S.(l1)
+
+
+(*
+    let handshake_A (kAS, b, nA: state1_At) (m2: m2t): option (state2_At & m3t) =
+    match decrypt kAS m2 with
+    | None -> None
+    | Some (nA', kAB, b', m3) ->
+    if nA' = nA && b' = b
+    then Some (kAB, m3)
+    else None
+
+#push-options "--z3rlimit 10"
+let handshake_A (kAS, b, nA: state1_At) (m2: m2t) (state: state2_At) (m3: m3t) =
+(requires fun h -> 
+    let open B in
+    live h kAS /\ live h b /\ live h nA /\ live h m2 /\
+    disjoint state kAS /\ disjoint state b /\ disjoint state nA /\ disjoint state m2 /\
+    disjoint m3 kAS /\ disjoint m3 b /\ disjoint m3 nA /\ disjoint m3 m2
+)
+(ensures fun h0 _ h1 ->
+    let open M in
+    let state', m3' = Spec.handshake_A (B.as_seq h0 kAS, b, nA) (B.as_seq h0 m2) in
+    True
+)
+= ()
+#pop-options
+*)
+
+(*
+#push-options "--z3rlimit 10"
+let generate_key_S (kAS kBS kAB: key) (a b:host) (nA:nonce) (*(m1:m1t)*) (m2: m2t) (e: host): Stack unit
+    (requires fun h ->
+        let open B in (*Buffer*)
+        (*let a, b, nA = m1 in*)
+        live h kAS /\ live h kBS /\ live h kAB /\  (*live h m1 /\*) live h m2 /\ live h e /\ live h a /\ live h b /\ live h nA /\
+        disjoint m2 kAS /\ disjoint m2 kBS /\ disjoint m2 kAB /\ (*disjoint m2 m1 /\*) disjoint m2 a /\ disjoint m2 b /\ disjoint m2 nA /\
+        disjoint e kAS /\ disjoint e kBS /\ disjoint e kAB /\ (*disjoint e m1) *) disjoint e a /\ disjoint e b /\ disjoint e nA)
+    (ensures fun h0 _ h1 ->
+        let open M in (*Modifies*)
+        (*let a, b, nA = m1 in*)
+        (*
+            let generate_key_S (kAS kBS: key) (a, b, nA: m1t) (kAB: key): m2t & host =
+            let m2', e' = Spec.generate_key_S (B.as_seq h0 kAS) (B.as_seq h0 kBS) (B.as_seq h0 a, b, nA) (B.as_seq h0 kAB) in
+        *)
+        let m2', e' = Spec.generate_key_S (B.as_seq h0 kAS) (B.as_seq h0 kBS)  (B.as_seq h0 a, b, nA) (B.as_seq h0 kAB) in
+        (*let state', m1' = Spec.initiate_A (B.as_seq h0 kAS) (B.as_seq h0 a) (B.as_seq h0 b) (B.as_seq h0 nA) in*)
+        modifies (loc_union (loc_buffer m2) (loc_buffer e)) h0 h1  (* modifies l (abstract location) h0 (initial heap) h1(resulting heap) *) /\
+        B.as_seq h1 e `S.equal` toSeq e' /\
+        B.as_seq h1 m2 `S.equal` joinCipher m2' /\
+        
+        (*
+        type m2t = ciphertext (nonce & key & host & m3t)
+            
+            should encrypt but we cannot use hacl?
+        *)
+        True
+        )
+= ()
+#pop-options
+*)
