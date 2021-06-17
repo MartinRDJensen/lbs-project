@@ -91,7 +91,7 @@ let initiate_A (kAS: key) (a b: host) (nA: nonce) (state: state1_At) (m1: m1t): 
     (ensures  fun h0 _ h1 ->
         let open M in
         let state', m1' = Spec.initiate_A (B.as_seq h0 kAS) (B.as_seq h0 a) (B.as_seq h0 b) (B.as_seq h0 nA) in
-        modifies (loc_union (loc_buffer state) (loc_buffer m1)) h0 h1 /\
+        modifies (loc_buffer state `loc_union` loc_buffer m1) h0 h1 /\
         B.as_seq h1 state `S.equal` join3 state' /\
         B.as_seq h1 m1 `S.equal` join3 m1' /\
         True)
@@ -129,7 +129,6 @@ assume val encrypt:
     (ensures fun h0 _ h1 ->
         let open B in
         modifies (loc_buffer c) h0 h1 /\
-        // plaintext_of and key_of
         True)
 
 assume val decrypt:
@@ -143,11 +142,9 @@ assume val decrypt:
         encrypt_pre k p c l h /\
         disjoint p k /\ disjoint p c /\
         True)
-    // (requires fun _ -> True)
     (ensures fun h0 b h1 ->
         let open B in
         modifies (loc_buffer p) h0 h1 /\
-        // plaintext_of and key_of
         True)
 
 noextract inline_for_extraction let nul = U8.uint_to_t 0
@@ -163,7 +160,7 @@ let generate_key_S (kAS kBS: key) (m1: m1t) (kAB: key) (m2: m2t) (a: host): Stac
         disjoint a m2)
     (ensures fun h0 _ h1 ->
         let open M in
-        // modifies (loc_union (loc_buffer m2) (loc_buffer a)) h0 h1 /\
+        // modifies (loc_buffer m2 `loc_union` loc_buffer a) h0 h1 /\
         // TODO: Prove.
         True)
 =
@@ -255,7 +252,7 @@ let handshake_A (state1: state1_At) (m2: m2t) (state2: state2_At) (m3: m3t): Sta
         disjoint state2 m3)
     (ensures fun h0 _ h1 ->
         let open M in
-        // modifies (loc_union (loc_buffer state2) (loc_buffer m3)) h0 h1 /\
+        // modifies (loc_buffer state2 `loc_union` loc_buffer m3) h0 h1 /\
         // TODO: Prove.
         True)
 =
@@ -304,7 +301,7 @@ let handshake_B (kBS: key) (m3: m3t) (nB: nonce) (state: state_Bt) (m4: m4t) (a:
         disjoint state m4 /\ disjoint state a /\ disjoint m4 a)
     (ensures fun h0 _ h1 ->
         let open M in
-        // modifies (loc_union (loc_buffer state) (loc_buffer m4) (loc_buffer a)) h0 h1 /\
+        modifies (loc_buffer state `loc_union` loc_buffer m4 `loc_union` loc_buffer a) h0 h1 /\
         // TODO: Prove.
         True)
 =
@@ -337,7 +334,7 @@ let accept_A (state: state2_At) (m4: m4t) (kAB: key) (m5: m5t): Stack bool
         disjoint kAB m5)
     (ensures fun h0 _ h1 ->
         let open M in
-        modifies (loc_union (loc_buffer m5) (loc_buffer kAB)) h0 h1 /\
+        modifies (loc_buffer m5 `loc_union` loc_buffer kAB) h0 h1 /\
         // TODO: Prove.
         True)
 =
@@ -389,77 +386,3 @@ let accept_B (state: state_Bt) (m5: m5t) (kAB: key): Stack bool
     pop_frame();
     r
 #pop-options
-
-(*
-type m3t = ciphertext (key & host)
-type m2t =  ciphertext (nonce & key & host & m3t)
-*)
-noextract let joinCipher (v: Spec.m2t) =
-    let _, t = v in
-    let n, k, h, m3 = t in
-    let _, tt = m3 in
-    let inner_key, inner_host = tt in
-    S.(n @| k @| h @|  inner_key @| inner_host)
-
-noextract let toSeq (l1: (S.seq 'a))
-    = S.(l1)
-
-
-(*
-    let handshake_A (kAS, b, nA: state1_At) (m2: m2t): option (state2_At & m3t) =
-    match decrypt kAS m2 with
-    | None -> None
-    | Some (nA', kAB, b', m3) ->
-    if nA' = nA && b' = b
-    then Some (kAB, m3)
-    else None
-
-#push-options "--z3rlimit 10"
-let handshake_A (kAS, b, nA: state1_At) (m2: m2t) (state: state2_At) (m3: m3t) =
-(requires fun h ->
-    let open B in
-    live h kAS /\ live h b /\ live h nA /\ live h m2 /\
-    disjoint state kAS /\ disjoint state b /\ disjoint state nA /\ disjoint state m2 /\
-    disjoint m3 kAS /\ disjoint m3 b /\ disjoint m3 nA /\ disjoint m3 m2
-)
-(ensures fun h0 _ h1 ->
-    let open M in
-    let state', m3' = Spec.handshake_A (B.as_seq h0 kAS, b, nA) (B.as_seq h0 m2) in
-    True
-)
-= ()
-#pop-options
-*)
-
-(*
-#push-options "--z3rlimit 10"
-let generate_key_S (kAS kBS kAB: key) (a b:host) (nA:nonce) (*(m1:m1t)*) (m2: m2t) (e: host): Stack unit
-    (requires fun h ->
-        let open B in (*Buffer*)
-        (*let a, b, nA = m1 in*)
-        live h kAS /\ live h kBS /\ live h kAB /\  (*live h m1 /\*) live h m2 /\ live h e /\ live h a /\ live h b /\ live h nA /\
-        disjoint m2 kAS /\ disjoint m2 kBS /\ disjoint m2 kAB /\ (*disjoint m2 m1 /\*) disjoint m2 a /\ disjoint m2 b /\ disjoint m2 nA /\
-        disjoint e kAS /\ disjoint e kBS /\ disjoint e kAB /\ (*disjoint e m1) *) disjoint e a /\ disjoint e b /\ disjoint e nA)
-    (ensures fun h0 _ h1 ->
-        let open M in (*Modifies*)
-        (*let a, b, nA = m1 in*)
-        (*
-            let generate_key_S (kAS kBS: key) (a, b, nA: m1t) (kAB: key): m2t & host =
-            let m2', e' = Spec.generate_key_S (B.as_seq h0 kAS) (B.as_seq h0 kBS) (B.as_seq h0 a, b, nA) (B.as_seq h0 kAB) in
-        *)
-        let m2', e' = Spec.generate_key_S (B.as_seq h0 kAS) (B.as_seq h0 kBS)  (B.as_seq h0 a, b, nA) (B.as_seq h0 kAB) in
-        (*let state', m1' = Spec.initiate_A (B.as_seq h0 kAS) (B.as_seq h0 a) (B.as_seq h0 b) (B.as_seq h0 nA) in*)
-        modifies (loc_union (loc_buffer m2) (loc_buffer e)) h0 h1  (* modifies l (abstract location) h0 (initial heap) h1(resulting heap) *) /\
-        B.as_seq h1 e `S.equal` toSeq e' /\
-        B.as_seq h1 m2 `S.equal` joinCipher m2' /\
-
-        (*
-        type m2t = ciphertext (nonce & key & host & m3t)
-
-            should encrypt but we cannot use hacl?
-        *)
-        True
-        )
-= ()
-#pop-options
-*)
